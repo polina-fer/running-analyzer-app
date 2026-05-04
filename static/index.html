@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Running Form Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0d0d0d;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 40px;
+      letter-spacing: 1px;
+    }
+
+    #uploadScreen {
+      width: 100%;
+      max-width: 620px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .upload-area {
+      width: 100%;
+      border: 2px dashed #333;
+      border-radius: 16px;
+      padding: 48px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: #141414;
+    }
+
+    .upload-area:hover, .upload-area.drag-over {
+      border-color: #00e676;
+      background: #0a1f0f;
+    }
+
+    .upload-icon { font-size: 3rem; margin-bottom: 12px; }
+    .upload-area p { color: #aaa; font-size: 0.95rem; margin-bottom: 8px; }
+    .upload-area .file-name { color: #00e676; font-size: 0.9rem; margin-top: 8px; font-weight: 600; }
+    input[type="file"] { display: none; }
+
+    button {
+      background: #00e676;
+      color: #000;
+      border: none;
+      padding: 14px 40px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: background 0.2s, transform 0.1s;
+      width: 100%;
+    }
+
+    button:hover { background: #00c853; }
+    button:active { transform: scale(0.98); }
+    button:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent;
+      color: #555;
+      border: 1px solid #333;
+      font-size: 0.85rem;
+      padding: 10px 24px;
+      width: auto;
+    }
+    .btn-ghost:hover { background: #1a1a1a; color: #aaa; }
+
+    .error-box {
+      background: #1a0000;
+      border: 1px solid #f44336;
+      border-radius: 10px;
+      padding: 20px;
+      color: #f44336;
+      text-align: center;
+      width: 100%;
+      display: none;
+    }
+
+    #analysisScreen {
+      width: 100%;
+      max-width: 620px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .analysis-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .analysis-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.95rem;
+      color: #aaa;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 3px solid #333;
+      border-top-color: #00e676;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .progress-bar-track {
+      width: 100%;
+      height: 4px;
+      background: #1a1a1a;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: #00e676;
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    .frame-preview {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #0a0a0a;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border: 1px solid #1a1a1a;
+    }
+
+    .frame-preview img {
+      width: 100%;
+      display: block;
+      border-radius: 12px;
+    }
+
+    .frame-overlay-pct {
+      position: absolute;
+      bottom: 12px;
+      right: 14px;
+      background: rgba(0,0,0,0.65);
+      color: #00e676;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: 1px;
+      display: none;
+    }
+
+    .frame-placeholder {
+      color: #333;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+    }
+
+    .live-stats-row {
+      width: 100%;
+      display: flex;
+      gap: 10px;
+    }
+
+    .live-stat {
+      flex: 1;
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .live-stat .ls-label {
+      font-size: 0.7rem;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .live-stat .ls-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #00e676;
+    }
+
+    .live-scores-title {
+      width: 100%;
+      font-size: 0.75rem;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .live-scores-grid {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .live-score-row {
+      background: #141414;
+      border: 1px solid #1e1e1e;
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      user-select: none;
+    }
+
+    .live-score-row:hover { border-color: #2a2a2a; }
+    .live-score-row.open  { border-color: #2a2a2a; }
+
+    .live-score-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .live-score-label { flex: 1; font-size: 0.85rem; color: #aaa; }
+
+    .live-score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+
+    .live-score-bar {
+      width: 80px; height: 4px;
+      background: #222;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .live-score-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s, background 0.4s; }
+
+    .live-score-num { font-size: 0.95rem; font-weight: 700; width: 14px; text-align: right; }
+
+    .live-score-chevron {
+      font-size: 0.65rem;
+      color: #444;
+      transition: transform 0.2s;
+      margin-left: 4px;
+    }
+    .live-score-row.open .live-score-chevron { transform: rotate(180deg); }
+
+    .live-score-tip {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #222;
+      font-size: 0.82rem;
+      color: #777;
+      line-height: 1.55;
+    }
+    .live-score-row.open .live-score-tip { display: block; }
+
+    .tip-good  { color: #00e676; font-weight: 600; }
+    .tip-label { color: #555; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+
+    #resultsScreen {
+      width: 100%;
+      max-width: 620px;
+      display: none;
+      flex-direction: column;
+    }
+
+    .results-top {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    .video-section { margin-bottom: 32px; }
+
+    .video-section h2 {
+      font-size: 1rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+
+    video {
+      width: 100%;
+      border-radius: 12px;
+      background: #000;
+      outline: none;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .metric-card {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .metric-card .label {
+      font-size: 0.75rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .metric-card .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .metric-card .unit {
+      font-size: 0.75rem;
+      color: #555;
+      margin-left: 2px;
+    }
+
+    .scores-grid { display: flex; flex-direction: column; gap: 10px; }
+
+    .score-row {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 14px 20px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+      user-select: none;
+    }
+    .score-row:hover { border-color: #2a2a2a; }
+    .score-row.open  { border-color: #2a2a2a; }
+
+    .score-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .score-label { font-size: 0.9rem; color: #ccc; flex: 1; }
+    .score-bar-wrap { display: flex; align-items: center; gap: 12px; }
+
+    .score-bar {
+      width: 120px; height: 6px;
+      background: #2a2a2a;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+    .score-num { font-size: 1.1rem; font-weight: 700; width: 20px; text-align: right; }
+    .score-chevron { font-size: 0.65rem; color: #444; margin-left: 10px; transition: transform 0.2s; }
+    .score-row.open .score-chevron { transform: rotate(180deg); }
+
+    .score-tip {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #222;
+      font-size: 0.83rem;
+      color: #777;
+      line-height: 1.55;
+    }
+    .score-row.open .score-tip { display: block; }
+
+    .score-1 .score-bar-fill { background: #f44336; width: 33%; }
+    .score-2 .score-bar-fill { background: #ffeb3b; width: 66%; }
+    .score-3 .score-bar-fill { background: #00e676; width: 100%; }
+    .score-1 .score-num { color: #f44336; }
+    .score-2 .score-num { color: #ffeb3b; }
+    .score-3 .score-num { color: #00e676; }
+
+    .summary-info {
+      text-align: center;
+      color: #555;
+      font-size: 0.8rem;
+      margin-top: 20px;
+      margin-bottom: 40px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Running Form Analyzer</h1>
+  <p class="subtitle">Side view analysis</p>
+
+  <div id="uploadScreen">
+    <div class="upload-area" id="dropZone">
+      <div class="upload-icon">🎥</div>
+      <p>Choose a video file</p>
+      <div class="file-name" id="fileName"></div>
+      <input type="file" id="fileInput" accept="video/*" />
+    </div>
+    <button id="analyzeBtn" disabled>Analyze Running Form</button>
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <div id="analysisScreen">
+    <div class="analysis-header">
+      <div class="analysis-title">
+        <div class="spinner"></div>
+        <span id="analysisStatusText">Uploading...</span>
+      </div>
+      <button class="btn-ghost" id="cancelBtn">Cancel</button>
+    </div>
+
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+
+    <div class="frame-preview" id="framePreview">
+      <span class="frame-placeholder" id="framePlaceholder">Waiting for first frame...</span>
+      <img id="frameImg" style="display:none;" alt="current frame" />
+      <div class="frame-overlay-pct" id="frameOverlayPct"></div>
+    </div>
+
+    <div class="live-stats-row">
+      <div class="live-stat">
+        <div class="ls-label">Steps</div>
+        <div class="ls-value" id="ls-steps">—</div>
+      </div>
+      <div class="live-stat">
+        <div class="ls-label">Cadence</div>
+        <div class="ls-value" id="ls-cadence">—</div>
+      </div>
+    </div>
+
+    <div class="live-scores-title">Current Scores</div>
+    <div class="live-scores-grid" id="liveScoresGrid"></div>
+  </div>
+
+  <div id="resultsScreen">
+    <div class="results-top">
+      <button class="btn-ghost" id="newAnalysisBtn">+ New Analysis</button>
+    </div>
+
+    <div class="video-section">
+      <h2>Processed Video</h2>
+      <video id="outputVideo" controls playsinline></video>
+    </div>
+
+    <p class="section-title">Session Summary</p>
+
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="label">Cadence</div>
+        <div class="value" id="m-cadence">—<span class="unit">spm</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Ground Contact</div>
+        <div class="value" id="m-gct">—<span class="unit">ms</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Vertical Osc.</div>
+        <div class="value" id="m-vosc">—<span class="unit">%</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Trunk Lean</div>
+        <div class="value" id="m-trunk">—<span class="unit">°</span></div>
+      </div>
+    </div>
+
+    <div class="scores-grid" id="scoresGrid"></div>
+    <div class="summary-info" id="summaryInfo"></div>
+  </div>
+
+  <script>
+    const uploadScreen    = document.getElementById('uploadScreen');
+    const analysisScreen  = document.getElementById('analysisScreen');
+    const resultsScreen   = document.getElementById('resultsScreen');
+    const dropZone        = document.getElementById('dropZone');
+    const fileInput       = document.getElementById('fileInput');
+    const fileName        = document.getElementById('fileName');
+    const analyzeBtn      = document.getElementById('analyzeBtn');
+    const errorBox        = document.getElementById('errorBox');
+    const cancelBtn       = document.getElementById('cancelBtn');
+    const newAnalysisBtn  = document.getElementById('newAnalysisBtn');
+    const progressFill    = document.getElementById('progressFill');
+    const frameImg        = document.getElementById('frameImg');
+    const framePlaceholder = document.getElementById('framePlaceholder');
+    const frameOverlayPct  = document.getElementById('frameOverlayPct');
+    const liveScoresGrid   = document.getElementById('liveScoresGrid');
+    const outputVideo      = document.getElementById('outputVideo');
+
+    let selectedFile = null;
+    let activeReader = null;
+    let lastUpdatedSteps = 0;
+    let frameUpdateCounter = 0;
+
+    const scoreLabels = {
+      cadence_score:     'Cadence',
+      gct_score:         'Ground Contact Time',
+      vert_osc_score:    'Vertical Oscillation',
+      knee_strike_score: 'Knee Strike',
+      knee_push_score:   'Knee Push-off',
+      elbow_angle_score: 'Elbow Angle',
+      leg_split_score:   'Leg Split',
+      trunk_lean_score:  'Trunk Lean',
+    };
+
+    const formTips = {
+      cadence_score: {
+        ideal: '170–180 steps/min',
+        tip: 'Higher cadence reduces impact forces and overstriding. If your score is low, try increasing your step rate by 5–10%, take smaller, quicker steps rather than longer ones.',
+      },
+      gct_score: {
+        ideal: 'Under 250 ms',
+        tip: 'Shorter ground contact means more efficient energy return from the tendons. Focus on a quick, light push off the ground rather than a heavy landing and slow reload.',
+      },
+      vert_osc_score: {
+        ideal: 'Under 8% of torso height',
+        tip: 'Excessive vertical bounce wastes energy going upward instead of forward. Drive horizontally, keep hips level, and focus on a low quick stride.',
+      },
+      knee_strike_score: {
+        ideal: '150–170° at initial contact',
+        tip: 'A slightly bent knee at landing absorbs shock effectively. A fully straight knee indicates heel-striking and increases impact forces through the leg.',
+      },
+      knee_push_score: {
+        ideal: '165–175° at push-off',
+        tip: 'Full knee extension during toe-off drives forward propulsion. Incomplete extension means you\'re leaving power on the ground - focus on a strong, complete push.',
+      },
+      elbow_angle_score: {
+        ideal: '90° bend',
+        tip: 'Keep arms relaxed at about 90°. Swing them forward and backward, not across your body. Crossing the midline creates torso rotation that steals energy from forward momentum.',
+      },
+      leg_split_score: {
+        ideal: 'Greater split = longer effective stride',
+        tip: 'A wider leg split indicates you\'re getting full range of motion through the hip. Combine with good cadence for optimal stride length without overstriding.',
+      },
+      trunk_lean_score: {
+        ideal: '5–10° forward lean from the ankles',
+        tip: 'A slight forward lean uses gravity to assist propulsion naturally. Lean from the ankles, not the waist - bending at the hip compresses the stride and strains the lower back.',
+      },
+    };
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+    function setFile(f) {
+      selectedFile = f;
+      fileName.textContent = f.name;
+      analyzeBtn.disabled = false;
+      errorBox.style.display = 'none';
+    }
+
+    function showScreen(name) {
+      uploadScreen.style.display   = name === 'upload'   ? 'flex' : 'none';
+      analysisScreen.style.display = name === 'analysis' ? 'flex' : 'none';
+      resultsScreen.style.display  = name === 'results'  ? 'flex' : 'none';
+    }
+
+    cancelBtn.addEventListener('click', () => {
+      if (activeReader) { activeReader.cancel(); activeReader = null; }
+      showScreen('upload');
+    });
+
+    newAnalysisBtn.addEventListener('click', () => {
+      selectedFile = null;
+      fileName.textContent = '';
+      analyzeBtn.disabled = true;
+      fileInput.value = '';
+      showScreen('upload');
+    });
+
+    analyzeBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      showScreen('analysis');
+      lastUpdatedSteps = 0;
+      frameUpdateCounter = 0;
+      progressFill.style.width = '0%';
+      frameImg.style.display = 'none';
+      framePlaceholder.style.display = 'block';
+      frameOverlayPct.style.display = 'none';
+      document.getElementById('ls-steps').textContent = '—';
+      document.getElementById('ls-cadence').textContent = '—';
+      liveScoresGrid.innerHTML = '';
+      document.getElementById('analysisStatusText').textContent = 'Uploading...';
+
+      const formData = new FormData();
+      formData.append('video', selectedFile);
+
+      try {
+        const res = await fetch('/analyze/stream', { method: 'POST', body: formData });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Analysis failed');
+        }
+
+        document.getElementById('analysisStatusText').textContent = 'Analyzing...';
+
+        const reader = res.body.getReader();
+        activeReader = reader;
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            let event;
+            try { event = JSON.parse(line.slice(6)); } catch { continue; }
+            handleEvent(event);
+          }
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        showScreen('upload');
+        errorBox.textContent = '⚠️ ' + err.message;
+        errorBox.style.display = 'block';
+      } finally {
+        activeReader = null;
+      }
+    });
+
+    function handleEvent(event) {
+      if (event.type === 'progress') {
+        progressFill.style.width = event.pct + '%';
+
+        frameUpdateCounter++;
+        if (frameUpdateCounter % 5 === 0 && event.frame) {
+          framePlaceholder.style.display = 'none';
+          frameImg.src = 'data:image/jpeg;base64,' + event.frame;
+          frameImg.style.display = 'block';
+          frameOverlayPct.style.display = 'block';
+          frameOverlayPct.textContent = event.pct + '%';
+        }
+
+        if (event.steps >= lastUpdatedSteps + 2 || lastUpdatedSteps === 0) {
+          document.getElementById('ls-steps').textContent = event.steps > 0 ? event.steps : '—';
+          document.getElementById('ls-cadence').textContent = event.cadence > 0 ? event.cadence + ' spm' : '—';
+
+          if (event.scores && Object.keys(event.scores).length > 0) {
+            updateLiveScores(event.scores);
+          }
+          lastUpdatedSteps = event.steps;
+        }
+      } else if (event.type === 'done') {
+        progressFill.style.width = '100%';
+        setTimeout(() => showResults(event), 400);
+      } else if (event.type === 'error') {
+        showScreen('upload');
+        errorBox.textContent = '⚠️ ' + event.message;
+        errorBox.style.display = 'block';
+      }
+    }
+
+    function updateLiveScores(scores) {
+      for (const [key, val] of Object.entries(scores)) {
+        const label = scoreLabels[key] || key;
+        let row = document.getElementById('lsrow-' + key);
+        if (!row) {
+          row = document.createElement('div');
+          row.className = 'live-score-row';
+          row.id = 'lsrow-' + key;
+          const tip = formTips[key];
+          row.innerHTML = `
+            <div class="live-score-main">
+              <span class="live-score-label">${label}</span>
+              <div class="live-score-bar-wrap">
+                <div class="live-score-bar"><div class="live-score-bar-fill" id="lsfill-${key}"></div></div>
+                <span class="live-score-num" id="lsnum-${key}">—</span>
+              </div>
+              <span class="live-score-chevron">▼</span>
+            </div>
+            <div class="live-score-tip">
+              ${tip ? `<div class="tip-label">Ideal</div><div class="tip-good" style="margin-bottom:8px;">${tip.ideal}</div>${tip.tip}` : ''}
+            </div>`;
+          row.addEventListener('click', () => row.classList.toggle('open'));
+          liveScoresGrid.appendChild(row);
+        }
+        const fill  = document.getElementById('lsfill-' + key);
+        const num   = document.getElementById('lsnum-'  + key);
+        const color = val >= 3 ? '#00e676' : val === 2 ? '#ffeb3b' : '#f44336';
+        const width = val >= 3 ? '100%'    : val === 2 ? '66%'     : '33%';
+        fill.style.background = color;
+        fill.style.width = width;
+        num.textContent = val;
+        num.style.color = color;
+      }
+    }
+
+    function showResults(data) {
+      outputVideo.src = data.video_url;
+      outputVideo.load();
+
+      document.getElementById('m-cadence').innerHTML = `${data.metrics.cadence_spm}<span class="unit"> spm</span>`;
+      document.getElementById('m-gct').innerHTML     = `${data.metrics.gct_ms}<span class="unit"> ms</span>`;
+      document.getElementById('m-vosc').innerHTML    = `${data.metrics.vert_osc_pct}<span class="unit"> %</span>`;
+      document.getElementById('m-trunk').innerHTML   = `${data.metrics.trunk_lean_deg}<span class="unit"> °</span>`;
+
+      const grid = document.getElementById('scoresGrid');
+      grid.innerHTML = '';
+      for (const [key, val] of Object.entries(data.scores)) {
+        const label = scoreLabels[key] || key;
+        const tip   = formTips[key];
+        const row   = document.createElement('div');
+        row.className = `score-row score-${val}`;
+        row.innerHTML = `
+          <div class="score-main">
+            <span class="score-label">${label}</span>
+            <div class="score-bar-wrap">
+              <div class="score-bar"><div class="score-bar-fill"></div></div>
+              <span class="score-num">${val}</span>
+            </div>
+            <span class="score-chevron">▼</span>
+          </div>
+          <div class="score-tip">
+            ${tip ? `<div class="tip-label" style="margin-bottom:3px;">Ideal</div><div class="tip-good" style="margin-bottom:8px;">${tip.ideal}</div>${tip.tip}` : ''}
+          </div>`;
+        row.addEventListener('click', () => row.classList.toggle('open'));
+        grid.appendChild(row);
+      }
+
+      document.getElementById('summaryInfo').textContent =
+        `Based on ${data.analyzed_steps} analyzed steps out of ${data.total_steps} total`;
+
+      showScreen('results');
+    }
+  </script>
+</body>
+</html>
