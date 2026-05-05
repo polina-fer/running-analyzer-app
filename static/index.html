@@ -199,22 +199,50 @@
     fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
 
     sampleBtn.addEventListener('click', async () => {
-      sampleBtn.disabled = true;
-      sampleBtn.textContent = 'Loading sample...';
-      try {
-        const res = await fetch('/static/SampleVideo.mov');
-        const blob = await res.blob();
-        const file = new File([blob], 'SampleVideo.mov', { type: 'video/quicktime' });
-        setFile(file);
-        analyzeBtn.click();
-      } catch(e) {
-        errorBox.textContent = '⚠️ Could not load sample video.';
-        errorBox.style.display = 'block';
-      } finally {
-        sampleBtn.disabled = false;
-        sampleBtn.textContent = '▶ Try with sample video';
+  sampleBtn.disabled = true;
+  sampleBtn.textContent = 'Loading sample...';
+  
+  showScreen('analysis');
+  lastUpdatedSteps = 0; frameUpdateCounter = 0;
+  progressFill.style.width = '0%';
+  frameImg.style.display = 'none'; framePlaceholder.style.display = 'block';
+  frameOverlayPct.style.display = 'none';
+  document.getElementById('ls-steps').textContent = '—';
+  document.getElementById('ls-cadence').textContent = '—';
+  liveScoresGrid.innerHTML = '';
+  document.getElementById('analysisStatusText').textContent = 'Analyzing sample...';
+
+  try {
+    const res = await fetch('/analyze/sample', { method: 'POST' });
+    if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed'); }
+    const reader = res.body.getReader();
+    activeReader = reader;
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let event;
+        try { event = JSON.parse(line.slice(6)); } catch { continue; }
+        handleEvent(event);
       }
-    });
+    }
+  } catch(err) {
+    if (err.name === 'AbortError') return;
+    showScreen('upload');
+    errorBox.textContent = '⚠️ ' + err.message;
+    errorBox.style.display = 'block';
+  } finally {
+    activeReader = null;
+    sampleBtn.disabled = false;
+    sampleBtn.textContent = '▶ Try with sample video';
+  }
+});
 
     function setFile(f) {
       selectedFile = f;

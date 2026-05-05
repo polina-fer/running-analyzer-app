@@ -97,32 +97,32 @@ def draw_overlays(frame, last_landmarks_data, avg_cadence, right_step_count, lef
         cv2.line(display, tuple(e), tuple(w), (255, 165, 0), 3)
 
     for j, ang, c in [(r_knee, r_knee_ang, (0, 255, 0)), (l_knee, l_knee_ang, (0, 255, 255)), (r_elb, r_elb_ang, (255, 165, 0))]:
-        cv2.putText(display, f"{int(ang)}", tuple(j + [10, -10]), 1, 1.2, c, 2)
+        cv2.putText(display, f"{int(ang)}", tuple(j + [6, -6]), 1, 0.65, c, 1)
 
-    cv2.rectangle(display, (0, 0), (280, 100), (20, 20, 20), -1)
-    cv2.putText(display, f"STEPS: {right_step_count + left_step_count}", (15, 35), 1, 1.8, (255, 255, 255), 2)
-    cv2.putText(display, f"CADENCE: {int(avg_cadence)}", (15, 65), 1, 1.2, (0, 255, 0), 2)
-    cv2.putText(display, f"STATUS: {current_status_event}", (15, 95), 1, 1.0, (0, 255, 255), 1)
+    cv2.rectangle(display, (6, 6), (181, 68), (20, 20, 20), -1)
+    cv2.putText(display, f"STEPS: {right_step_count + left_step_count}", (14, 26), 1, 0.9, (255, 255, 255), 1)
+    cv2.putText(display, f"CADENCE: {int(avg_cadence)}", (14, 46), 1, 0.75, (0, 255, 0), 1)
+    cv2.putText(display, f"STATUS: {current_status_event}", (14, 64), 1, 0.6, (0, 255, 255), 1)
 
     if latest_ai_results:
-        bw, start_y, sx = 250, 35, fw - 260
-        cv2.rectangle(display, (sx, 10), (fw - 10, start_y + 160), (20, 20, 20), -1)
-        cv2.putText(display, "AI ANALYSIS", (sx + 15, start_y), 1, 1.2, (255, 255, 255), 2)
+        bw, start_y, sx = 155, 20, fw - 162
+        cv2.rectangle(display, (sx, 6), (fw - 6, start_y + 118), (20, 20, 20), -1)
+        cv2.putText(display, "AI ANALYSIS", (sx + 6, start_y), 1, 0.7, (255, 255, 255), 1)
         for i, (metric, score) in enumerate(latest_ai_results.items()):
-            y_p = start_y + 30 + (i * 18)
+            y_p = start_y + 16 + (i * 13)
             val = int(score)
             color = (0, 255, 0) if val >= 3 else (0, 255, 255) if val == 2 else (0, 0, 255)
-            cv2.putText(display, f"{metric.replace('_score', '').upper()}:", (sx + 15, y_p), 1, 0.8, (200, 200, 200), 1)
-            cv2.putText(display, f"{val}", (sx + bw - 30, y_p), 1, 1.0, color, 2)
+            cv2.putText(display, f"{metric.replace('_score', '').upper()}:", (sx + 6, y_p), 1, 0.55, (200, 200, 200), 1)
+            cv2.putText(display, f"{val}", (sx + bw - 16, y_p), 1, 0.65, color, 1)
 
     for side_ui, pos, state in [
-        ("LEFT", (10, fh - 20), leg_is_on_ground["Left"]),
-        ("RIGHT", (fw - 130, fh - 20), leg_is_on_ground["Right"])
+        ("LEFT", (10, fh - 10), leg_is_on_ground["Left"]),
+        ("RIGHT", (fw - 80, fh - 10), leg_is_on_ground["Right"])
     ]:
         color = (0, 255, 0) if state else (0, 0, 255)
-        cv2.rectangle(display, (pos[0] - 10, pos[1] - 40), (pos[0] + 120, pos[1] + 10), (0, 0, 0), -1)
-        cv2.putText(display, side_ui, (pos[0], pos[1] - 20), 1, 1.2, color, 2)
-        cv2.putText(display, "CONTACT" if state else "FLIGHT", (pos[0], pos[1]), 1, 0.9, (255, 255, 255), 1)
+        cv2.rectangle(display, (pos[0] - 5, pos[1] - 24), (pos[0] + 68, pos[1] + 4), (0, 0, 0), -1)
+        cv2.putText(display, side_ui, (pos[0], pos[1] - 10), 1, 0.7, color, 1)
+        cv2.putText(display, "CONTACT" if state else "FLIGHT", (pos[0], pos[1]), 1, 0.55, (255, 255, 255), 1)
 
     return display
 
@@ -189,7 +189,6 @@ def analyze_video_stream(video_path, output_path=None):
 
             fh, fw, _ = frame.shape
 
-            # for skipped frames: draw last known annotations on this original frame
             if frame_count % 2 != 0:
                 if writer:
                     annotated = draw_overlays(frame, last_landmarks_data, avg_cadence,
@@ -232,7 +231,6 @@ def analyze_video_stream(video_path, output_path=None):
                 if split_angle > current_max_split:
                     current_max_split = split_angle
 
-                # store landmark data for use on skipped frames
                 last_landmarks_data = {
                     'r_hip': r_hip, 'r_knee': r_knee, 'r_ankle': r_ankle,
                     'l_hip': l_hip, 'l_knee': l_knee, 'l_ankle': l_ankle,
@@ -341,7 +339,6 @@ def analyze_video_stream(video_path, output_path=None):
                                     break
                     last_ankle_y[side] = current_y
 
-            # draw annotations on processed frame and write
             display_frame = draw_overlays(frame, last_landmarks_data, avg_cadence,
                                           right_step_count, left_step_count,
                                           current_status_event, latest_ai_results,
@@ -382,17 +379,22 @@ def analyze_video_stream(video_path, output_path=None):
             cv2.rectangle(overlay, (0, 0), (frame_width, frame_height), (0, 0, 0), -1)
             cv2.addWeighted(overlay, 0.7, last_display_frame, 0.3, 0, last_display_frame)
 
+            pad = 12
             cx, cy = frame_width // 2, frame_height // 2
-            cv2.rectangle(last_display_frame, (cx - 250, cy - 225), (cx + 250, cy + 225), (30, 30, 30), -1)
-            cv2.rectangle(last_display_frame, (cx - 250, cy - 225), (cx + 250, cy + 225), (255, 255, 255), 2)
-            cv2.putText(last_display_frame, "SESSION SUMMARY", (cx - 150, cy - 180), 1, 2.0, (255, 255, 255), 2)
+            bw, bh = 110, 85
+            cv2.rectangle(last_display_frame, (cx - bw, cy - bh), (cx + bw, cy + bh), (30, 30, 30), -1)
+            cv2.rectangle(last_display_frame, (cx - bw, cy - bh), (cx + bw, cy + bh), (255, 255, 255), 1)
+            cv2.putText(last_display_frame, "SESSION SUMMARY", (cx - bw + 8, cy - bh + 16), 1, 0.7, (255, 255, 255), 1)
 
+            n = len(models)
+            usable_h = 2 * bh - 26
+            step = usable_h // (n + 1)
             for i, (target, model) in enumerate(models.items()):
                 avg_score = int(round(np.mean(model.predict(model_df[X_features]))))
                 color = (0, 255, 0) if avg_score >= 3 else (0, 255, 255) if avg_score == 2 else (0, 0, 255)
-                y_p = cy - 100 + (i * 35)
-                cv2.putText(last_display_frame, f"{target.replace('_score', '').upper()}:", (cx - 220, y_p), 1, 1.2, (200, 200, 200), 1)
-                cv2.putText(last_display_frame, f"{avg_score}", (cx + 180, y_p), 1, 1.5, color, 2)
+                y_p = cy - bh + 26 + (i + 1) * step
+                cv2.putText(last_display_frame, f"{target.replace('_score', '').upper()}:", (cx - bw + 8, y_p), 1, 0.5, (200, 200, 200), 1)
+                cv2.putText(last_display_frame, f"{avg_score}", (cx + bw - 14, y_p), 1, 0.55, color, 1)
 
             for _ in range(int(frames_per_second * 3)):
                 writer.write(last_display_frame)

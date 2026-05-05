@@ -82,3 +82,27 @@ async def analyze_stream(video: UploadFile = File(...)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+@app.post("/analyze/sample")
+async def analyze_sample():
+    sample_path = os.path.join(os.path.dirname(__file__), "static", "SampleVideo.mov")
+    if not os.path.exists(sample_path):
+        raise HTTPException(status_code=404, detail="Sample video not found")
+
+    output_filename = "processed_sample.mp4"
+    output_path = os.path.join(OUTPUT_DIR, output_filename)
+
+    def event_stream():
+        try:
+            for event in analyze_video_stream(sample_path, output_path=output_path):
+                if event["type"] == "done":
+                    event["video_url"] = f"/outputs/{output_filename}"
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
